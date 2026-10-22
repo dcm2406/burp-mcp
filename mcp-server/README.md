@@ -5,15 +5,16 @@ uses stdio: stdout is reserved for JSON-RPC and diagnostics go to stderr.
 
 ## Run
 
-```powershell
+```bash
 npm ci
 npm run build
-burp-mcp
+node dist/cli.js
 ```
 
-The active bridge is discovered from
-`%LOCALAPPDATA%\burp-mcp\active-session.json`. For tests or an isolated install,
-set `BURP_MCP_SESSION_FILE` to another descriptor path.
+`npm link` additionally exposes the `burp-mcp` bin. The active bridge is discovered from
+`%LOCALAPPDATA%\burp-mcp\active-session.json` on Windows and
+`$XDG_DATA_HOME/burp-mcp/active-session.json` (default `~/.local/share/burp-mcp/active-session.json`)
+elsewhere. For tests or an isolated install, set `BURP_MCP_SESSION_FILE` to another descriptor path.
 
 The descriptor is expected to contain `baseUrl`, `token`, and `sessionId`:
 
@@ -31,7 +32,7 @@ an explicit port. Tool arguments cannot override the URL, token, or timeout.
 
 ## Development
 
-```powershell
+```bash
 npm run build
 npm test
 npm run pack:check

@@ -150,7 +150,7 @@ Kỳ vọng: chỉ có `time`, `requestId` (UUID), `operation` (vd. `POST /v1/ht
 
 ## Bước 7 — Kiểm tra MCP end-to-end qua OpenCode
 
-1. Copy block MCP server từ `docs\opencode-setup.md` vào config OpenCode V2, trỏ `command` tới Node + `mcp-server\dist\cli.js`.
+1. Copy block MCP server từ `docs\mcp-setup.md` vào config agent, trỏ `command` tới Node + `mcp-server\dist\cli.js`.
 2. `opencode mcp list` → `burp` connected.
 3. Gọi `burp_status` → trả `burpVersion`, `capabilities`, `limits`.
 4. Gọi `burp_proxy_history` → danh sách `ref`.

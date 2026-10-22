@@ -3,8 +3,8 @@
 ## Components
 
 ```text
-OpenCode V2
-    │ MCP 2026-07-28 / stdio
+MCP client (OpenCode, Claude Code, Codex, …)
+    │ MCP over stdio
     ▼
 burp-mcp TypeScript process
     │ authenticated HTTP/JSON

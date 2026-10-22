@@ -3,7 +3,7 @@
 Local [MCP](https://modelcontextprotocol.io) integration for Burp Suite Professional.
 
 A Java Montoya extension runs a locked-down loopback HTTP bridge inside Burp; a TypeScript stdio
-server exposes that bridge to MCP clients (OpenCode, Claude Code, Codex, …) as 7 tools.
+server exposes that bridge to MCP clients (OpenCode, Claude Code, Codex, …) as 8 tools.
 
 > **Use only on systems you are authorized to test.** The bridge binds to literal `127.0.0.1` with a
 > per-session bearer token, but it will send requests to any host you point it at — scope is your
@@ -17,6 +17,7 @@ server exposes that bridge to MCP clients (OpenCode, Claude Code, Codex, …) as
 | `burp_proxy_history` | Filter and cursor-paginate proxy history (SQLite metadata index keeps repeated queries cheap) |
 | `burp_get_proxy_message` | Binary-safe raw request/response by opaque ref |
 | `burp_send_http_request` | Send exactly one raw request through Burp |
+| `burp_send_to_repeater` | Create a Repeater tab from a raw request without sending it |
 | `burp_send_http_batch` | Send 1–50 requests in one call, bounded concurrency, per-item results |
 | `burp_collaborator_payload` | Mint a Burp Collaborator payload for out-of-band detection |
 | `burp_collaborator_interactions` | Poll Collaborator for DNS/HTTP/SMTP interactions (blind detection) |
@@ -74,7 +75,13 @@ Tests only:
 | [`contracts/bridge-api.yaml`](contracts/bridge-api.yaml) | Normative bridge API contract |
 | [`docs/threat-model.md`](docs/threat-model.md) | Assets, trust boundaries, accepted risks |
 | [`docs/smoke-test.md`](docs/smoke-test.md) | End-to-end runbook (Windows + Linux) |
-| [`plans/plan.md`](plans/plan.md) | MVP scope, verification evidence, known limitations |
+| [`docs/testing.md`](docs/testing.md) | Automated suite, packaging checks, manual gate |
+| [`plans/`](plans/) | Historical MVP and design notes (Vietnamese) |
+
+## Contributing and security
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the build/test workflow and
+[`SECURITY.md`](SECURITY.md) for private vulnerability reporting.
 
 ## License
 

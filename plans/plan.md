@@ -1,9 +1,13 @@
 # Burp MCP MVP — Implementation Plan
 
+> **Tài liệu lịch sử.** Đây là nhật ký kế hoạch/triển khai MVP theo thời gian; số lượng
+> test, đường dẫn và session ID bên dưới phản ánh thời điểm ghi. Trạng thái hiện tại xem
+> `README.md`, `docs/` và lịch sử git.
+
 ## Trạng thái
 
 - Status: Implementation xong; verification PASS trên cả Windows và Kali/Linux
-- Target gốc: `D:\mbos\burp-mcp`; đã port sang `/home/kali/burp-mcp` (Kali) và verify lại end-to-end
+- Target gốc: `<repo>`; đã port sang `<repo>` (Kali) và verify lại end-to-end
 - Repository: Không dùng Git theo yêu cầu
 - Phiên bản MVP: `0.1.0`
 
@@ -216,7 +220,7 @@ Gate: TypeScript unit tests và mock bridge tests pass; stdout sạch.
 - Tất cả Java và TypeScript tests pass.
 - Năm MCP tools được list/call thành công với mock bridge.
 - Có test cho auth, loopback binding, 10 MiB cap, cursor/reference tampering, token rotation, kill switch, audit redaction và no-retry.
-- Không đọc hoặc sửa bất kỳ dữ liệu pentest nào bên ngoài `D:\mbos\burp-mcp`.
+- Không đọc hoặc sửa bất kỳ dữ liệu pentest nào bên ngoài `<repo>`.
 - Không cần live Burp test để đạt Done; bước cài JAR thủ công được ghi rõ trong README.
 
 ## Ngoài phạm vi MVP
