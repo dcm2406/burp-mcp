@@ -1,0 +1,22 @@
+// Neutral MCP profile for the Burp MCP server.
+//
+// Copy the block you need into your agent's configuration and replace ${BURP_MCP_ROOT}
+// with the absolute path of this repository (or run ./scripts/apply-profile.sh to print
+// the substituted JSON). Cross-platform on purpose: the same file serves OpenCode,
+// Claude Code, Codex and any other agent that spawns a stdio MCP server.
+{
+  "name": "burp",
+  "description": "Burp Suite bridge: proxy history, raw requests, batch send, Collaborator OAST",
+  "transport": "stdio",
+  "command": [
+    "node",
+    "${BURP_MCP_ROOT}/mcp-server/dist/cli.js"
+  ],
+  "cwd": "${BURP_MCP_ROOT}",
+  "requires": "node >= 22.12 (verified on 22 and 24)",
+  "notes": [
+    "The agent spawns this process; you never run it by hand.",
+    "dist/ must exist: run ./scripts/build.sh once after cloning.",
+    "Never put the bearer token in agent config; the server reads the session descriptor itself."
+  ]
+}

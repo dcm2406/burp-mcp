@@ -1,0 +1,501 @@
+openapi: 3.1.0
+info:
+  title: Burp MCP Loopback Bridge
+  version: 0.1.0
+  description: Local-only bridge between the Burp extension and the MCP stdio server.
+servers:
+  - url: http://127.0.0.1:{port}
+    variables:
+      port:
+        default: "0"
+security:
+  - bearerAuth: []
+paths:
+  /v1/status:
+    get:
+      operationId: getStatus
+      responses:
+        "200":
+          description: Bridge status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+        "401":
+          $ref: "#/components/responses/Error"
+  /v1/proxy-history/query:
+    post:
+      operationId: queryProxyHistory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HistoryQuery"
+      responses:
+        "200":
+          description: One history page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryPage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+  /v1/proxy-history/{ref}:
+    get:
+      operationId: getProxyMessage
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 1024
+      responses:
+        "200":
+          description: Raw request and response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exchange"
+        "404":
+          $ref: "#/components/responses/Error"
+        "410":
+          $ref: "#/components/responses/Error"
+  /v1/http/send:
+    post:
+      operationId: sendHttpRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendRequest"
+      responses:
+        "200":
+          description: Burp HTTP result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exchange"
+        "413":
+          $ref: "#/components/responses/Error"
+  /v1/http/send-batch:
+    post:
+      operationId: sendHttpRequestBatch
+      summary: Send several requests through Burp in one call, with bounded concurrency
+      description: >
+        Sends every item exactly once through the Burp HTTP engine, running up to `concurrency`
+        requests in parallel. The batch is validated in full before anything is sent, so a
+        malformed item rejects the whole call with 400 and sends nothing. Results keep the order
+        of `items`. A per-item send failure is reported in that item's entry and does not fail
+        the batch; the response distinguishes succeeded from failed counts. There is never an
+        automatic retry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchSendRequest"
+      responses:
+        "200":
+          description: Batch completed (possibly with per-item failures)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchSendResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+        "413":
+          $ref: "#/components/responses/Error"
+        "503":
+          $ref: "#/components/responses/Error"
+  /v1/collaborator/payload:
+    post:
+      operationId: createCollaboratorPayload
+      summary: Generate a Burp Collaborator payload for out-of-band detection
+      description: >
+        Generates a Collaborator payload. Embed it in a target request; later DNS/HTTP/SMTP
+        contact with the payload proves the target reached out. Tag with `customData` so
+        interactions identify the injection point. At most 20 payloads per session. Not retried.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollaboratorPayloadRequest"
+      responses:
+        "200":
+          description: Payload created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollaboratorPayloadResult"
+        "400":
+          $ref: "#/components/responses/Error"
+        "503":
+          $ref: "#/components/responses/Error"
+  /v1/collaborator/interactions:
+    post:
+      operationId: pollCollaboratorInteractions
+      summary: Poll Collaborator for out-of-band interactions
+      description: >
+        Polls interactions for one payload (`ref` from payload creation, or the raw `payload`
+        string) or, when neither is given, for the whole session. Burp hands each interaction
+        over exactly once, so a poll only returns what arrived since the previous poll:
+        `total` and `newCount` are therefore always equal. Default mode `full` includes
+        Base64 bodies of the hit; `summary` returns metadata only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollaboratorInteractionsRequest"
+      responses:
+        "200":
+          description: Interactions (possibly empty)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollaboratorInteractionsResult"
+        "400":
+          $ref: "#/components/responses/Error"
+        "410":
+          $ref: "#/components/responses/Error"
+  /v1/repeater:
+    post:
+      operationId: sendToRepeater
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RepeaterRequest"
+      responses:
+        "202":
+          description: Repeater tab created; request was not sent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted]
+                properties:
+                  accepted:
+                    const: true
+                  tabName:
+                    type: string
+                    maxLength: 80
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  responses:
+    Error:
+      description: Safe error response
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+  schemas:
+    CollaboratorPayloadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        customData:
+          type: string
+          pattern: "^[A-Za-z0-9]{1,16}$"
+          description: Tag echoed back on every interaction of this payload. Burp accepts at most 16 letters or digits.
+        includeServerLocation:
+          type: boolean
+          default: true
+    CollaboratorPayloadResult:
+      type: object
+      additionalProperties: false
+      required: [ref, payloadId, payload]
+      properties:
+        ref: { type: string, description: "Opaque session-bound reference for polling." }
+        payloadId: { type: string }
+        payload: { type: string }
+        server: { type: string }
+        customData: { type: string }
+    CollaboratorInteractionsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        ref: { type: string, maxLength: 1024 }
+        payload: { type: string, maxLength: 253 }
+        mode: { type: string, enum: [summary, full], default: full }
+      description: "Provide either ref or payload, not both; neither polls the whole session."
+    CollaboratorBinaryPart:
+      type: object
+      additionalProperties: false
+      required: [byteLength, sha256]
+      properties:
+        data: { type: string, description: "Present in full mode" }
+        byteLength: { type: integer, minimum: 0 }
+        sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+    CollaboratorInteractionResult:
+      type: object
+      additionalProperties: false
+      required: [ref, type, time, clientIp, clientPort]
+      properties:
+        ref: { type: string }
+        type: { type: string, enum: [DNS, HTTP, SMTP] }
+        time: { type: string, format: date-time }
+        clientIp: { type: string }
+        clientPort: { type: integer, minimum: 0 }
+        customData: { type: string }
+        dns:
+          type: object
+          additionalProperties: false
+          required: [queryType]
+          properties:
+            queryType: { type: string }
+            domain: { type: string, description: "Decoded query name when it could be parsed from wire format" }
+            rawHex: { type: string, description: "Hex of the raw DNS query (full mode)" }
+        http:
+          type: object
+          additionalProperties: false
+          required: [method, path, request]
+          properties:
+            method: { type: string }
+            path: { type: string }
+            request: { $ref: "#/components/schemas/CollaboratorBinaryPart" }
+            response:
+              oneOf:
+                - $ref: "#/components/schemas/CollaboratorBinaryPart"
+                - type: "null"
+        smtp:
+          type: object
+          additionalProperties: false
+          required: [protocol]
+          properties:
+            protocol: { type: string }
+    CollaboratorInteractionsResult:
+      type: object
+      additionalProperties: false
+      required: [interactions, total, newCount]
+      properties:
+        interactions:
+          type: array
+          items: { $ref: "#/components/schemas/CollaboratorInteractionResult" }
+        total: { type: integer, minimum: 0 }
+        newCount: { type: integer, minimum: 0 }
+    BatchSendRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/SendRequest"
+        concurrency:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 4
+          description: Upper bound on requests in flight inside this batch.
+        responseMode:
+          type: string
+          enum: [summary, full]
+          default: summary
+          description: >
+            `summary` returns request/response metadata only. `full` also returns Base64 bodies,
+            subject to the same per-item 10 MiB budget as a single send plus a 8 MiB budget across
+            the whole batch; items beyond that budget report `omitted: true` and no body.
+    BatchSendResponse:
+      type: object
+      additionalProperties: false
+      required: [results, succeeded, failed]
+      properties:
+        results:
+          type: array
+          description: One entry per item, in request order.
+          items:
+            $ref: "#/components/schemas/BatchSendItemResult"
+        succeeded: { type: integer, minimum: 0 }
+        failed: { type: integer, minimum: 0 }
+    BatchSendItemResult:
+      type: object
+      additionalProperties: false
+      required: [statusCode, request, response, hasResponse, truncated, omitted, durationMs]
+      properties:
+        statusCode:
+          type: [integer, "null"]
+        request:
+          type: object
+          required: [byteLength, sha256]
+          properties:
+            data: { type: string, description: Present only in full mode }
+            byteLength: { type: integer, minimum: 0 }
+            sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+        response:
+          type: [object, "null"]
+          description: Null when there is no response, or when the body was omitted for budget.
+          properties:
+            omitted:
+              type: boolean
+              description: True when full mode dropped this body to stay inside the batch budget.
+            data: { type: string, description: Present only in full mode when not omitted }
+            byteLength: { type: integer, minimum: 0 }
+            sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+        hasResponse: { type: boolean }
+        truncated: { type: boolean }
+        durationMs: { type: integer, minimum: 0 }
+        error:
+          type: object
+          description: Present only when this item failed to send.
+          required: [code, requestId]
+          properties:
+            code: { type: string }
+            requestId: { type: string }
+    Status:
+      type: object
+      required: [connected, sessionId, extensionVersion, burpVersion, startedAt, limits, capabilities]
+      properties:
+        connected: { type: boolean }
+        sessionId: { type: string }
+        extensionVersion: { type: string }
+        burpVersion: { type: string }
+        startedAt: { type: string, format: date-time }
+        limits:
+          type: object
+          required: [maxRawBytes, maxPageSize, maxBatchItems, maxBatchConcurrency, maxBatchInputBytes, maxBatchOutputBytes]
+          properties:
+            maxRawBytes: { type: integer, const: 10485760 }
+            maxPageSize: { type: integer, const: 200 }
+            maxBatchItems: { type: integer, const: 50 }
+            maxBatchConcurrency: { type: integer, const: 10 }
+            maxBatchInputBytes: { type: integer, const: 8388608 }
+            maxBatchOutputBytes: { type: integer, const: 8388608 }
+        capabilities:
+          type: array
+          items:
+            type: string
+            enum: [proxyHistory, sendHttpRequest, sendToRepeater, sendHttpRequestBatch, collaborator]
+    HistoryQuery:
+      type: object
+      additionalProperties: false
+      properties:
+        pageSize: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        cursor: { type: string, maxLength: 2048 }
+        filter:
+          type: object
+          additionalProperties: false
+          properties:
+            host: { type: string, maxLength: 253 }
+            method: { type: string, maxLength: 32 }
+            statusCodes:
+              type: array
+              maxItems: 20
+              items: { type: integer, minimum: 100, maximum: 999 }
+            hasResponse: { type: boolean }
+            search: { type: string, maxLength: 256, description: "Case-insensitive raw request/response body search. Matched against raw bytes, so the bridge always scans Burp directly instead of using its local metadata index." }
+            from: { type: string, format: date-time }
+            to: { type: string, format: date-time }
+    HistoryPage:
+      type: object
+      additionalProperties: false
+      required: [items, nextCursor, returned, malformedItemCount]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryItem"
+        nextCursor:
+          type: [string, "null"]
+        returned: { type: integer, minimum: 0 }
+        malformedItemCount:
+          type: integer
+          minimum: 0
+          description: "History entries the bridge could not project, counted at index time plus any skipped while building this page. Malformed entries are never returned; a malformed entry does not fail the page."
+    HistoryItem:
+      type: object
+      required: [ref, burpHistoryId, time, method, url, service, statusCode, mimeType, hasResponse, edited, listenerPort, requestByteLength, responseByteLength]
+      properties:
+        ref: { type: string }
+        burpHistoryId: { type: integer }
+        time: { type: string, format: date-time }
+        method: { type: string }
+        url: { type: string }
+        service: { $ref: "#/components/schemas/HttpService" }
+        statusCode: { type: [integer, "null"] }
+        mimeType: { type: [string, "null"] }
+        hasResponse: { type: boolean }
+        edited: { type: boolean }
+        listenerPort: { type: integer }
+        requestByteLength: { type: integer }
+        responseByteLength: { type: integer }
+    HttpService:
+      type: object
+      additionalProperties: false
+      required: [host, port, secure]
+      properties:
+        host: { type: string, minLength: 1, maxLength: 253 }
+        port: { type: integer, minimum: 1, maximum: 65535 }
+        secure: { type: boolean }
+    RawMessage:
+      type: object
+      required: [encoding, data, byteLength, returnedByteLength, truncated, sha256]
+      properties:
+        encoding: { const: base64 }
+        data: { type: string }
+        byteLength: { type: integer, minimum: 0 }
+        returnedByteLength: { type: integer, minimum: 0 }
+        truncated: { type: boolean }
+        sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+    RawInput:
+      type: object
+      additionalProperties: false
+      required: [encoding, data]
+      properties:
+        encoding: { const: base64 }
+        data: { type: string }
+    Exchange:
+      type: object
+      additionalProperties: false
+      required: [service, request, response, hasResponse, statusCode]
+      properties:
+        ref: { type: string }
+        burpHistoryId: { type: integer }
+        time: { type: string, format: date-time }
+        method: { type: string }
+        url: { type: string }
+        service: { $ref: "#/components/schemas/HttpService" }
+        request: { $ref: "#/components/schemas/RawMessage" }
+        response:
+          oneOf:
+            - $ref: "#/components/schemas/RawMessage"
+            - type: "null"
+        hasResponse: { type: boolean }
+        statusCode: { type: [integer, "null"] }
+    SendRequest:
+      type: object
+      additionalProperties: false
+      required: [service, request]
+      properties:
+        service: { $ref: "#/components/schemas/HttpService" }
+        request: { $ref: "#/components/schemas/RawInput" }
+    RepeaterRequest:
+      allOf:
+        - $ref: "#/components/schemas/SendRequest"
+        - type: object
+          properties:
+            tabName: { type: string, maxLength: 80 }
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            requestId: { type: string }

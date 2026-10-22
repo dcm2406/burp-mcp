@@ -1,0 +1,10 @@
+{
+  "pageSize": 50,
+  "filter": {
+    "host": "app.example.test",
+    "method": "POST",
+    "statusCodes": [200, 400, 401, 403, 500],
+    "hasResponse": true,
+    "search": "application/json"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "service": {
+    "host": "app.example.test",
+    "port": 443,
+    "secure": true
+  },
+  "request": {
+    "encoding": "base64",
+    "data": "R0VUIC8gSFRUUC8xLjENCkhvc3Q6IGFwcC5leGFtcGxlLnRlc3QNCkNvbm5lY3Rpb246IGNsb3NlDQoNCg=="
+  }
+}
