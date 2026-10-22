@@ -18,7 +18,7 @@ stdio entrypoint — agents differ only in *where* the registration lives.
 
 ```bash
 ./scripts/apply-profile.sh --jsonc     # OpenCode-style block
-./scripts/apply-profile.sh --json      # Claude Code / Codex-style block
+./scripts/apply-profile.sh --json      # Claude Code .mcp.json block
 ```
 
 ## OpenCode

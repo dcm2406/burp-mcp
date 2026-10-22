@@ -11,9 +11,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 emit_json() {
   cat <<EOF
 {
-  "burp": {
-    "command": ["node", "$ROOT/mcp-server/dist/cli.js"],
-    "cwd": "$ROOT"
+  "mcpServers": {
+    "burp": {
+      "command": "node",
+      "args": ["$ROOT/mcp-server/dist/cli.js"]
+    }
   }
 }
 EOF
@@ -38,7 +40,7 @@ case "$FORMAT" in
   *) cat <<EOF
 usage: $0 [--json|--jsonc]
 
-  --json   Claude Code .mcp.json / Codex config.toml friendly block
+  --json   Claude Code .mcp.json block
   --jsonc  OpenCode opencode.json(c) mcp.servers block
 EOF
      exit 2 ;;
