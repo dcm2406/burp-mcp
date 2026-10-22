@@ -3,18 +3,28 @@
 How to register this project's MCP server with any agent. Everything here uses the same
 stdio entrypoint — agents differ only in *where* the registration lives.
 
+> **Installing a release?** Run [`scripts/install.sh`](../scripts/install.sh) instead. It
+> downloads a prebuilt server, verifies checksums, and writes the OpenCode/Claude Code config
+> automatically. This page covers manual registration and source builds; see
+> [`installation.md`](installation.md) for the release layout.
+
 ## Before you start
 
-1. Build: `./scripts/build.sh` (creates `extension/build/libs/*.jar` and `mcp-server/dist/`).
+1. Install a release (`scripts/install.sh`) **or** build from source (`./scripts/build.sh`).
 2. Node >= 22.12 on your PATH (`node --version`).
 3. Load the JAR in Burp and enable the bridge.
 4. The server path in every example below is:
 
 ```text
+# release install
+<BURP_MCP_PREFIX>/server/dist/cli.js
+
+# source build
 <BURP_MCP_ROOT>/mcp-server/dist/cli.js
 ```
 
-`<BURP_MCP_ROOT>` is the absolute path of your clone. Print it with:
+`<BURP_MCP_PREFIX>` defaults to `~/.local/share/burp-mcp`. `<BURP_MCP_ROOT>` is the absolute path
+of your clone. Print the source-build paths with:
 
 ```bash
 ./scripts/apply-profile.sh --jsonc     # OpenCode-style block
@@ -50,6 +60,9 @@ Create `opencode.jsonc` in the working directory where you use Burp tools:
   }
 }
 ```
+
+`cwd`, `codemode` and the timeout block are optional; the installer writes only `type` and
+`command`. A release install should use its absolute paths instead of `cwd`.
 
 ### Global
 
@@ -110,10 +123,10 @@ proves descriptor discovery and authentication work.
 
 ## Keeping both sides in sync
 
-The extension JAR and `mcp-server/dist/` must come from the **same build**. After changing
+The extension JAR and MCP server must come from the **same build or release**. After changing
 either one:
 
-1. Rebuild (`./scripts/build.sh`).
+1. Rebuild (`./scripts/build.sh`) or reinstall the release (`scripts/install.sh`).
 2. Reload the extension in Burp.
 3. Restart the agent session so it spawns a fresh server process.
 

@@ -1,0 +1,107 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify tag matches project versions
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./mcp-server/package.json').version")"
+          ROOT_JAVA="$(sed -n 's/^version = "\(.*\)"/\1/p' build.gradle.kts | head -1)"
+          EXT_JAVA="$(sed -n 's/^version = "\(.*\)"/\1/p' extension/build.gradle.kts | head -1)"
+          if [ "$VERSION" != "$PKG" ] || [ "$VERSION" != "$ROOT_JAVA" ] || [ "$VERSION" != "$EXT_JAVA" ]; then
+            echo "tag v$VERSION does not match package=$PKG root=$ROOT_JAVA extension=$EXT_JAVA" >&2
+            exit 1
+          fi
+
+      - name: Build and test extension
+        run: ./gradlew --no-daemon clean test fatJar
+
+      - name: Build and test MCP server
+        run: |
+          cd mcp-server
+          npm ci
+          npm run build
+          npm test
+
+      - name: Packaging invariants
+        run: |
+          cd mcp-server
+          npm pack
+          cd ..
+          ./scripts/ci-checks.sh
+
+      - name: Assemble release assets
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          STAGE="$(mktemp -d)"
+          mkdir -p "$STAGE/server"
+          cp -R mcp-server/dist "$STAGE/server/dist"
+          cp mcp-server/package.json "$STAGE/server/package.json"
+          cp mcp-server/README.md "$STAGE/server/README.md"
+          cp LICENSE "$STAGE/server/LICENSE"
+          (cd mcp-server && npm prune --omit=dev)
+          cp -R mcp-server/node_modules "$STAGE/server/node_modules"
+          rm -rf "$STAGE/server/node_modules/.bin"
+          cp extension/build/libs/*-all.jar "burp-mcp-extension-${VERSION}.jar"
+          tar -czf "burp-mcp-server-${VERSION}.tar.gz" -C "$STAGE" server
+          (cd "$STAGE" && zip -qr "$GITHUB_WORKSPACE/burp-mcp-server-${VERSION}.zip" server)
+          cp scripts/install.sh scripts/install.ps1 .
+          sha256sum \
+            "burp-mcp-extension-${VERSION}.jar" \
+            "burp-mcp-server-${VERSION}.tar.gz" \
+            "burp-mcp-server-${VERSION}.zip" \
+            install.sh \
+            install.ps1 > SHA256SUMS
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" \
+              "burp-mcp-extension-${VERSION}.jar" \
+              "burp-mcp-server-${VERSION}.tar.gz" \
+              "burp-mcp-server-${VERSION}.zip" \
+              install.sh \
+              install.ps1 \
+              SHA256SUMS --clobber
+          else
+            gh release create "$TAG" \
+              "burp-mcp-extension-${VERSION}.jar" \
+              "burp-mcp-server-${VERSION}.tar.gz" \
+              "burp-mcp-server-${VERSION}.zip" \
+              install.sh \
+              install.ps1 \
+              SHA256SUMS \
+              --title "$TAG" \
+              --generate-notes
+          fi

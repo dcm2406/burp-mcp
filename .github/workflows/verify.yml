@@ -19,6 +19,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check installer syntax (POSIX)
+        if: runner.os == 'Linux'
+        run: bash -n scripts/install.sh
+
+      - name: Parse installer syntax (Windows)
+        if: runner.os == 'Windows'
+        run: pwsh -NoProfile -Command "[scriptblock]::Create((Get-Content -Raw scripts/install.ps1)) | Out-Null"
+
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:

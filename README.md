@@ -26,16 +26,68 @@ Security properties: loopback-only bind, random port, 256-bit bearer token (cons
 session-bound HMAC refs, owner-only session descriptor, kill switch, unload cleanup, metadata-only
 audit log, 10 MiB decoded payload cap per call.
 
-## Requirements
+## Install
 
-- Burp Suite Professional (Montoya API 2026.7)
-- JDK 21
-- Node.js >= 22.12 (verified on 22 and 24)
-- No system-wide Gradle needed — the wrapper downloads its own distribution
+Requires **Burp Suite Professional** and **Node.js >= 22.12**. A release install does **not** need
+JDK, Gradle or a source checkout.
 
-## Build
+### Linux / macOS
+
+Public repository:
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/dcm2406/burp-mcp/main/scripts/install.sh | bash
+```
+
+Private repository (authenticate once with `gh auth login`):
+
+```bash
+gh api repos/dcm2406/burp-mcp/contents/scripts/install.sh \
+  -H "Accept: application/vnd.github.raw" | bash
+```
+
+The installer downloads the latest release, verifies every downloaded file against `SHA256SUMS`,
+installs under `~/.local/share/burp-mcp`, and registers the server with any detected OpenCode,
+Claude Code or Codex CLI. Pin a release or keep your agent config untouched:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dcm2406/burp-mcp/main/scripts/install.sh \
+  | bash -s -- --version v0.1.0
+curl -fsSL https://raw.githubusercontent.com/dcm2406/burp-mcp/main/scripts/install.sh \
+  | bash -s -- --no-config
+```
+
+### Windows
+
+```powershell
+gh release download --repo dcm2406/burp-mcp --pattern install.ps1 --dir . --clobber
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+The default install directory is `%LOCALAPPDATA%\burp-mcp`. Pass `-Version v0.1.0` to pin a
+release or `-NoConfig` to skip agent registration. Without `gh`, download `install.ps1` from the
+release page.
+
+### Finish
+
+1. Burp → **Extensions → Installed → Add**, type **Java**, and select:
+   - Linux/macOS: `~/.local/share/burp-mcp/extension/burp-mcp-extension.jar`
+   - Windows: `%LOCALAPPDATA%\burp-mcp\extension\burp-mcp-extension.jar`
+2. Open the **Burp MCP** tab and enable the bridge.
+3. Restart your agent session, then confirm `opencode mcp list` (or `claude mcp list`) shows `burp`.
+
+The installer keeps the extension JAR and MCP server from the same release, so re-running it
+upgrades both together. See [`docs/installation.md`](docs/installation.md) for manual install,
+offline use, options and uninstall.
+
+## Build from source
+
+Only needed for development. Requires JDK 21 and Node.js >= 22.12; no system-wide Gradle is
+needed because the wrapper downloads its own distribution.
+
+```bash
+git clone https://github.com/dcm2406/burp-mcp.git
+cd burp-mcp
 ./scripts/bootstrap.sh        # optional: fetch portable JDK/Node/Gradle into .tools/ (Windows: .\scripts\bootstrap.ps1)
 ./scripts/build.sh            # Windows: .\scripts\build.ps1
 ```
@@ -50,27 +102,19 @@ mcp-server/dist/                                        # MCP server (spawned by
 Tests only:
 
 ```bash
-./scripts/test.sh              # Windows: .\scripts\test.ps1
+./scripts/test.sh             # Windows: .\scripts\test.ps1
 ```
 
-## Install
-
-1. Burp → **Extensions → Installed → Add**, type **Java**, select the fat JAR.
-2. Open the **Burp MCP** tab and confirm the bridge is enabled on `127.0.0.1:<port>`.
-3. Register the MCP server with your agent — see [`docs/mcp-setup.md`](docs/mcp-setup.md)
-   (OpenCode, Claude Code, Codex, manual JSON) or use
-   [`mcp-profile.jsonc`](mcp-profile.jsonc) as the neutral source.
-4. Restart your agent session and confirm `opencode mcp list` (or the equivalent) shows `burp`.
-
-> The extension JAR and `mcp-server/dist/` must come from the **same build**. A stale server
-> rejects a new bridge with `BRIDGE_INVALID_RESPONSE` — rebuild both, reload the extension, and
-> restart the agent session.
+`dist/` is gitignored: release installs ship a prebuilt server, while contributors build it once.
+The extension JAR and server must come from the same build; a stale server rejects a new bridge
+with `BRIDGE_INVALID_RESPONSE`.
 
 ## Documentation
 
 | Document | Contents |
 |---|---|
-| [`docs/mcp-setup.md`](docs/mcp-setup.md) | Per-agent setup, upgrade and troubleshooting |
+| [`docs/installation.md`](docs/installation.md) | Release install, manual install, layout, upgrade, uninstall |
+| [`docs/mcp-setup.md`](docs/mcp-setup.md) | Per-agent setup and troubleshooting |
 | [`docs/architecture.md`](docs/architecture.md) | Bridge design, discovery, batch, Collaborator, history index |
 | [`contracts/bridge-api.yaml`](contracts/bridge-api.yaml) | Normative bridge API contract |
 | [`docs/threat-model.md`](docs/threat-model.md) | Assets, trust boundaries, accepted risks |
