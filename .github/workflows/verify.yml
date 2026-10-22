@@ -32,7 +32,8 @@ jobs:
 
       - name: Gradle test and fatJar (Windows)
         if: runner.os == 'Windows'
-        run: .\gradlew.bat --no-daemon clean test fatJar
+        # --stacktrace surfaces Windows-only handle/socket failures that the summary hides.
+        run: .\gradlew.bat --no-daemon clean test fatJar --stacktrace
 
       - name: MCP server build, type-check, tests and pack
         run: |
