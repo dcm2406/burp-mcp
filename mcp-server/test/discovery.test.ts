@@ -1,6 +1,6 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
-import { join, sep } from "node:path";
+import { basename, join, sep } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -45,7 +45,7 @@ describe("session discovery", () => {
     );
   });
 
-  it("never embeds a literal backslash in the default descriptor path", () => {
+  it("keeps the descriptor filename as a separate path segment", () => {
     // Regression: a hardcoded "burp-mcp\\active-session.json" constant resolved to a
     // literal backslash filename on POSIX systems and broke discovery without the override.
     for (const env of [{}, { XDG_DATA_HOME: "/data/xdg" }, { LOCALAPPDATA: "D:\\local" }]) {
@@ -53,8 +53,8 @@ describe("session discovery", () => {
       const expectedTail = join(SESSION_DIR_NAME, SESSION_FILE_NAME);
       expect(resolved.endsWith(expectedTail)).toBe(true);
       expect(resolved.includes(sep + SESSION_FILE_NAME)).toBe(true);
+      expect(basename(resolved)).toBe(SESSION_FILE_NAME);
     }
-    expect(resolveSessionFile({ env: {} }).includes("\\")).toBe(false);
   });
 
   it("prefers an explicit session file over every environment fallback", () => {
