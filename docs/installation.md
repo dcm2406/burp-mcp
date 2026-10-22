@@ -14,16 +14,15 @@ registers the server with supported agents. No clone, JDK or Gradle is needed.
 
 - Burp Suite Professional (Montoya API 2026.7)
 - Node.js **>= 22.12** on `PATH`
-- Linux/macOS: `gh` (GitHub CLI) for private repositories, or `curl` for public repositories
-- Windows: `gh` for private repositories; public releases use built-in PowerShell cmdlets
-- Linux/macOS: `tar`, `sha256sum` or `shasum`
+- Linux/macOS: `curl`, `tar`, and `sha256sum` or `shasum`
 - Windows: PowerShell 5.1+ (the built-in `Expand-Archive` is used)
+- `gh` (GitHub CLI) only for private forks or mirrors
 
 JDK 21 and Gradle are only required for [building from source](../README.md#build-from-source).
 
 ## One-command install
 
-### Linux / macOS, public repository
+### Linux / macOS
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dcm2406/burp-mcp/main/scripts/install.sh | bash
@@ -37,23 +36,34 @@ less install.sh
 bash install.sh
 ```
 
-### Linux / macOS, private repository
-
-Authenticate once with `gh auth login`, then stream the script through the API:
-
-```bash
-gh api repos/dcm2406/burp-mcp/contents/scripts/install.sh \
-  -H "Accept: application/vnd.github.raw" | bash
-```
-
 ### Windows
 
 ```powershell
-gh release download --repo dcm2406/burp-mcp --pattern install.ps1 --dir . --clobber
+Invoke-WebRequest -UseBasicParsing https://github.com/dcm2406/burp-mcp/releases/latest/download/install.ps1 -OutFile install.ps1
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-Without `gh`, download `install.ps1` from the release page, then run the second command.
+### Private fork or mirror
+
+Authenticate once with `gh auth login`, stream that repository's installer, and point
+`BURP_MCP_REPO` at it so release downloads use the fork:
+
+```bash
+gh api repos/<owner>/<repo>/contents/scripts/install.sh \
+  -H "Accept: application/vnd.github.raw" \
+  | BURP_MCP_REPO=<owner>/<repo> bash
+```
+
+Windows:
+
+```powershell
+$env:BURP_MCP_REPO = "<owner>/<repo>"
+gh release download --repo <owner>/<repo> --pattern install.ps1 --dir . --clobber
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+Set `BURP_MCP_REPO` again when you upgrade a private fork, or change the default in the fork's
+copy of the installer.
 
 ### Options
 
@@ -291,8 +301,9 @@ purge.
 
 | Symptom | Fix |
 |---|---|
-| `gh: command not found` / `cannot resolve the latest release` | Install GitHub CLI and run `gh auth login`, or pass `--version v0.1.0` for a public release. |
-| `cannot download ...` for a private repository | `curl` cannot access private release assets. Use `gh release download` or the authenticated `gh api` command above. |
+| `cannot resolve the latest release` | Check network/proxy, or pass `--version v0.1.0`. For a private fork, install `gh` and run `gh auth login`. |
+| `gh: command not found` | Only needed for a private fork. Public installs use `curl`/`Invoke-WebRequest`. |
+| `cannot download ...` / `404` | For a private fork, `curl` cannot access private release assets; authenticate with `gh auth login` and use the private-fork commands. Otherwise retry the download. |
 | `checksum mismatch` | Delete the downloaded files and retry. Do not bypass the check; a partial download or proxy error can corrupt the bundle. |
 | `Node.js >= 22.12 is required` | Upgrade Node; the server and its dependencies require modern ESM and web APIs. |
 | `BRIDGE_INVALID_RESPONSE` | The extension and server are from different builds, the bridge is disabled, or Burp was reloaded without restarting the agent session. Reinstall from one release, reload the extension, restart the agent. |

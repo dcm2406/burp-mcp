@@ -33,17 +33,8 @@ JDK, Gradle or a source checkout.
 
 ### Linux / macOS
 
-Public repository:
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dcm2406/burp-mcp/main/scripts/install.sh | bash
-```
-
-Private repository (authenticate once with `gh auth login`):
-
-```bash
-gh api repos/dcm2406/burp-mcp/contents/scripts/install.sh \
-  -H "Accept: application/vnd.github.raw" | bash
 ```
 
 The installer downloads the latest release, verifies every downloaded file against `SHA256SUMS`,
@@ -57,16 +48,24 @@ curl -fsSL https://raw.githubusercontent.com/dcm2406/burp-mcp/main/scripts/insta
   | bash -s -- --no-config
 ```
 
+For a private fork or mirror, authenticate with `gh auth login` and stream its copy of the script:
+
+```bash
+gh api repos/<owner>/<repo>/contents/scripts/install.sh \
+  -H "Accept: application/vnd.github.raw" \
+  | BURP_MCP_REPO=<owner>/<repo> bash
+```
+
 ### Windows
 
 ```powershell
-gh release download --repo dcm2406/burp-mcp --pattern install.ps1 --dir . --clobber
+Invoke-WebRequest -UseBasicParsing https://github.com/dcm2406/burp-mcp/releases/latest/download/install.ps1 -OutFile install.ps1
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 The default install directory is `%LOCALAPPDATA%\burp-mcp`. Pass `-Version v0.1.0` to pin a
-release or `-NoConfig` to skip agent registration. Without `gh`, download `install.ps1` from the
-release page.
+release or `-NoConfig` to skip agent registration. For a private fork, set
+`$env:BURP_MCP_REPO = "<owner>/<repo>"` and download its `install.ps1` release asset with `gh`.
 
 ### Finish
 
