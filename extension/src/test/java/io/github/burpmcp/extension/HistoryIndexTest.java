@@ -1,6 +1,8 @@
 package io.github.burpmcp.extension;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
@@ -148,6 +150,7 @@ class HistoryIndexTest {
         }
     }
 
+    @EnabledOnOs({ OS.LINUX, OS.MAC })
     @Test
     void databaseFileIsOwnerOnlyAndDeletedOnClose() throws Exception {
         Path database = temporaryDirectory.resolve("index").resolve("history.db");

@@ -34,13 +34,14 @@ jobs:
         if: runner.os == 'Windows'
         run: .\gradlew.bat --no-daemon clean test fatJar
 
-      - name: Verify packaging invariants (POSIX only)
-        if: runner.os == 'Linux'
-        run: ./scripts/ci-checks.sh
-
-      - name: MCP server build, type-check and tests
+      - name: MCP server build, type-check, tests and pack
         run: |
           cd mcp-server
           npm ci
           npm test
+          npm pack
         shell: bash
+
+      - name: Verify packaging invariants (POSIX only)
+        if: runner.os == 'Linux'
+        run: ./scripts/ci-checks.sh

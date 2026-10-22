@@ -10,8 +10,26 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-JAR="$(ls "$ROOT"/extension/build/libs/burp-mcp-extension-*-all.jar 2>/dev/null | head -1)"
-TARBALL="$(ls "$ROOT"/mcp-server/burp-mcp-server-*.tgz 2>/dev/null | head -1)"
+
+# Locate artifacts without pipelines: a failing `ls`/glob under `set -e` aborts the script
+# before the friendly error message can run.
+first_match() {
+  local candidate
+  for candidate in "$@"; do
+    [ -e "$candidate" ] || continue
+    printf '%s\n' "$candidate"
+    return 0
+  done
+  return 0
+}
+
+shopt -s nullglob
+JAR_CANDIDATES=("$ROOT"/extension/build/libs/burp-mcp-extension-*-all.jar)
+TARBALL_CANDIDATES=("$ROOT"/mcp-server/burp-mcp-server-*.tgz)
+shopt -u nullglob
+
+JAR="$(first_match "${JAR_CANDIDATES[@]}")"
+TARBALL="$(first_match "${TARBALL_CANDIDATES[@]}")"
 
 fail() { echo "ci-checks: $1" >&2; exit 1; }
 
@@ -20,7 +38,12 @@ fail() { echo "ci-checks: $1" >&2; exit 1; }
 
 listing() { unzip -l "$1" | awk '{print $4}'; }
 
-count_pattern() { listing "$JAR" | grep -c "$1" || true; }
+# grep -c exits 1 when nothing matches; capture without letting pipefail abort.
+count_pattern() {
+  local matches
+  matches="$(listing "$JAR" | grep -c "$1" || true)"
+  echo "${matches:-0}"
+}
 
 [ "$(count_pattern 'io/github/burpmcp/.*\.class')" -gt 0 ] || fail "JAR missing io.github.burpmcp classes"
 [ "$(count_pattern 'com/fasterxml/jackson')" -gt 0 ] || fail "JAR missing bundled Jackson"
