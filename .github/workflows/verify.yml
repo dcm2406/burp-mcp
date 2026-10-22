@@ -26,15 +26,19 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Gradle: test + fatJar
+      - name: Gradle test and fatJar (Linux/macOS)
+        if: runner.os != 'Windows'
         run: ./gradlew --no-daemon clean test fatJar
-        shell: bash
 
-      - name: Verify packaging invariants
+      - name: Gradle test and fatJar (Windows)
+        if: runner.os == 'Windows'
+        run: .\gradlew.bat --no-daemon clean test fatJar
+
+      - name: Verify packaging invariants (POSIX only)
+        if: runner.os == 'Linux'
         run: ./scripts/ci-checks.sh
-        shell: bash
 
-      - name: MCP server: build, type-check, tests
+      - name: MCP server build, type-check and tests
         run: |
           cd mcp-server
           npm ci
