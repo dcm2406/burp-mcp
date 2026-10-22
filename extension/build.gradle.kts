@@ -30,6 +30,12 @@ tasks.test {
     // The integration tests bind loopback ports and write per-test audit files;
     // parallel forks make them flaky for no real speed-up.
     maxParallelForks = 1
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showCauses = true
+        showStackTraces = true
+    }
 }
 
 tasks.withType<JavaCompile>().configureEach {

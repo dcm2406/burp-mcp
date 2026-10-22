@@ -136,6 +136,24 @@ final class BridgeServer implements AutoCloseable {
         operationExecutor.shutdownNow();
         httpExecutor.shutdownNow();
         batchExecutor.shutdownNow();
+        awaitTermination(operationExecutor);
+        awaitTermination(httpExecutor);
+        awaitTermination(batchExecutor);
+    }
+
+    private static void awaitTermination(ExecutorService executor) {
+        boolean interrupted = false;
+        try {
+            try {
+                executor.awaitTermination(2, TimeUnit.SECONDS);
+            } catch (InterruptedException exception) {
+                interrupted = true;
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private void enqueue(HttpExchange exchange) throws IOException {
